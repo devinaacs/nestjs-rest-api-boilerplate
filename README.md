@@ -21,6 +21,7 @@ A production-minded NestJS REST API boilerplate for auth-backed products, dashbo
 - Jest
 - E2E test setup
 - GitHub Actions CI
+- Docker, Railway, and Render deployment presets
 
 ## Getting Started
 
@@ -35,6 +36,8 @@ npm run dev
 ```
 
 Open <http://localhost:3001/api/v1/health>.
+
+Readiness check: <http://localhost:3001/api/v1/health/ready>.
 
 Swagger is available at <http://localhost:3001/docs>.
 
@@ -66,7 +69,7 @@ npm run db:seed        # Seed the admin user
 ```txt
 src/
   auth/                JWT auth module, DTOs, controller, service, strategy
-  common/              Shared decorators, filters, guards, interceptors, types
+  common/              Shared decorators, DTOs, filters, guards, interceptors, types
   config/              Environment schema and validation
   health/              Health check endpoint
   prisma/              Prisma module and service lifecycle
@@ -125,11 +128,13 @@ The default API prefix is `api/v1`.
 
 ```txt
 GET  /api/v1/health
+GET  /api/v1/health/live
+GET  /api/v1/health/ready
 POST /api/v1/auth/register
 POST /api/v1/auth/login
 POST /api/v1/auth/refresh
 POST /api/v1/auth/logout
-GET  /api/v1/users
+GET  /api/v1/users?page=1&limit=20
 GET  /api/v1/users/me
 ```
 
@@ -153,6 +158,24 @@ Responses use a consistent envelope:
 ```
 
 Errors use the same shape with `success: false`, an `error` object, and request metadata.
+
+Paginated endpoints return:
+
+```json
+{
+  "items": [],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 0,
+    "totalPages": 0,
+    "hasNextPage": false,
+    "hasPreviousPage": false
+  }
+}
+```
+
+The global response interceptor wraps this object in the standard `success/data/meta` envelope.
 
 ## Conventions
 
@@ -178,6 +201,27 @@ Run it against the local Compose database:
 ```bash
 docker run --env-file .env -p 3001:3001 devc-api
 ```
+
+## Deployment
+
+The repo includes:
+
+```txt
+Dockerfile
+railway.json
+render.yaml
+```
+
+Recommended production flow:
+
+1. Provision managed PostgreSQL.
+2. Set `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, and `CORS_ORIGIN`.
+3. Run migrations before starting the app with `npm run db:deploy`.
+4. Seed an admin user once with `npm run db:seed`.
+
+Railway can use the included `railway.json`. It builds from the Dockerfile, runs `npm run db:deploy` before deploy, and checks `/api/v1/health/ready`.
+
+Render can use the included `render.yaml` as a starting point for a Docker web service and managed PostgreSQL database.
 
 ## CI
 

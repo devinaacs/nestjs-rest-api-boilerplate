@@ -58,6 +58,23 @@ describe("App e2e", () => {
     await app.close();
   });
 
+  it("reports readiness with database connectivity", async () => {
+    await request(httpServer)
+      .get("/api/v1/health/ready")
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          success: true,
+          data: {
+            status: "ok",
+            checks: {
+              database: "ok",
+            },
+          },
+        });
+      });
+  });
+
   it("runs the auth lifecycle", async () => {
     const registerResponse = await request(httpServer)
       .post("/api/v1/auth/register")

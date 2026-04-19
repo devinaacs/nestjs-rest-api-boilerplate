@@ -1,6 +1,10 @@
 import { Injectable } from "@nestjs/common";
 
 import { PublicUser } from "@/common/types/auth-user";
+import {
+  PaginatedResult,
+  createPaginationMeta,
+} from "@/common/types/pagination";
 import { PrismaService } from "@/prisma/prisma.service";
 
 import { CreateUserInput, UserRecord } from "./types/user-record";
@@ -31,10 +35,26 @@ export class UsersService {
     }) as Promise<UserRecord[]>;
   }
 
-  async findAllPublic(): Promise<PublicUser[]> {
-    const users = await this.findAll();
+  async findAllPublic({
+    page,
+    limit,
+  }: {
+    page: number;
+    limit: number;
+  }): Promise<PaginatedResult<PublicUser>> {
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }) as Promise<UserRecord[]>,
+      this.prisma.user.count(),
+    ]);
 
-    return users.map((user) => this.toPublicUser(user));
+    return {
+      items: users.map((user) => this.toPublicUser(user)),
+      pagination: createPaginationMeta({ page, limit, total }),
+    };
   }
 
   async findPublicById(id: string): Promise<PublicUser | null> {

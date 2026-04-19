@@ -3,6 +3,7 @@ import {
   Get,
   Inject,
   NotFoundException,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
@@ -10,14 +11,19 @@ import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { Role } from "@/common/constants/roles";
 import { CurrentUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
+import { PaginationQueryDto } from "@/common/dto/pagination-query.dto";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { RolesGuard } from "@/common/guards/roles.guard";
 import { AuthUser, PublicUser } from "@/common/types/auth-user";
+import { PaginatedResult } from "@/common/types/pagination";
 
 import { UsersService } from "./users.service";
 
 type UsersReader = {
-  findAllPublic: () => Promise<PublicUser[]>;
+  findAllPublic: (query: {
+    page: number;
+    limit: number;
+  }) => Promise<PaginatedResult<PublicUser>>;
   findPublicById: (id: string) => Promise<PublicUser | null>;
 };
 
@@ -31,9 +37,11 @@ export class UsersController {
   @Get()
   @Roles(Role.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiOkResponse({ description: "All users. Admin only." })
-  async findAll(): Promise<PublicUser[]> {
-    const users = await this.users.findAllPublic();
+  @ApiOkResponse({ description: "Paginated users. Admin only." })
+  async findAll(
+    @Query() query: PaginationQueryDto,
+  ): Promise<PaginatedResult<PublicUser>> {
+    const users = await this.users.findAllPublic(query);
 
     return users;
   }
