@@ -1,7 +1,13 @@
-import { Controller, Get, NotFoundException, UseGuards } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Inject,
+  NotFoundException,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
-import { Role } from "@prisma/client";
 
+import { Role } from "@/common/constants/roles";
 import { CurrentUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
@@ -10,32 +16,37 @@ import { AuthUser, PublicUser } from "@/common/types/auth-user";
 
 import { UsersService } from "./users.service";
 
+type UsersReader = {
+  findAllPublic: () => Promise<PublicUser[]>;
+  findPublicById: (id: string) => Promise<PublicUser | null>;
+};
+
 @ApiTags("users")
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller("users")
 export class UsersController {
-  constructor(private readonly users: UsersService) {}
+  constructor(@Inject(UsersService) private readonly users: UsersReader) {}
 
   @Get()
   @Roles(Role.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOkResponse({ description: "All users. Admin only." })
   async findAll(): Promise<PublicUser[]> {
-    const users = await this.users.findAll();
+    const users = await this.users.findAllPublic();
 
-    return users.map((user) => this.users.toPublicUser(user));
+    return users;
   }
 
   @Get("me")
   @ApiOkResponse({ description: "Authenticated user profile" })
   async me(@CurrentUser() user: AuthUser): Promise<PublicUser> {
-    const foundUser = await this.users.findById(user.sub);
+    const foundUser = await this.users.findPublicById(user.sub);
 
     if (!foundUser) {
       throw new NotFoundException("User not found");
     }
 
-    return this.users.toPublicUser(foundUser);
+    return foundUser;
   }
 }

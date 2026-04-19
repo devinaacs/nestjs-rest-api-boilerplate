@@ -1,10 +1,11 @@
 import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { Role } from "@prisma/client";
+import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 import request from "supertest";
 
 import { setupApp } from "@/app.bootstrap";
 import { AppModule } from "@/app.module";
+import { Role } from "@/common/constants/roles";
 import { PrismaService } from "@/prisma/prisma.service";
 
 type AuthPayload = {
@@ -85,7 +86,7 @@ describe("App e2e", () => {
     const refreshResponse = await request(httpServer)
       .post("/api/v1/auth/refresh")
       .send({ refreshToken: auth.refreshToken })
-      .expect(201);
+      .expect(200);
     const rotatedAuth = (refreshResponse.body as ApiResponse<AuthPayload>).data;
 
     expect(rotatedAuth.accessToken).toEqual(expect.any(String));
@@ -99,7 +100,7 @@ describe("App e2e", () => {
     await request(httpServer)
       .post("/api/v1/auth/logout")
       .set("Authorization", `Bearer ${rotatedAuth.accessToken}`)
-      .expect(201);
+      .expect(200);
 
     await request(httpServer)
       .post("/api/v1/auth/refresh")

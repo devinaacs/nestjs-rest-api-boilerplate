@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
-import { Role } from "@prisma/client";
 import { ExtractJwt, Strategy } from "passport-jwt";
 
+import { Role } from "@/common/constants/roles";
 import { AuthUser } from "@/common/types/auth-user";
 import { Env } from "@/config/env.validation";
 

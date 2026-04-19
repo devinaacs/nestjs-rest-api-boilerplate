@@ -3,12 +3,16 @@ import { createHash } from "node:crypto";
 import { ConflictException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { Role } from "@prisma/client";
+import { describe, expect, it, jest } from "@jest/globals";
 
+import { Role } from "@/common/constants/roles";
+import { AuthUser, PublicUser } from "@/common/types/auth-user";
 import { Env } from "@/config/env.validation";
 import { UsersService } from "@/users/users.service";
 
 import { AuthService } from "./auth.service";
+
+type MockFn = ReturnType<typeof jest.fn>;
 
 const now = new Date("2026-01-01T00:00:00.000Z");
 const user = {
@@ -24,25 +28,70 @@ const user = {
 };
 
 type MockUsersService = {
-  create: jest.Mock;
-  findByEmail: jest.Mock;
-  findById: jest.Mock;
-  updateRefreshTokenHash: jest.Mock;
-  toPublicUser: jest.Mock;
+  create: MockFn;
+  findByEmail: MockFn;
+  findById: MockFn;
+  updateRefreshTokenHash: MockFn;
+  toPublicUser: MockFn;
 };
 
 type MockJwtService = {
-  signAsync: jest.Mock;
-  verifyAsync: jest.Mock;
+  signAsync: MockFn;
+  verifyAsync: MockFn;
 };
 
+type TestDependencies = {
+  service: AuthService;
+  users: MockUsersService;
+  jwt: MockJwtService;
+};
+
+type TestAuthResponse = {
+  accessToken: string;
+  refreshToken: string;
+  user: PublicUser;
+};
+
+type RefreshableAuthService = {
+  refresh: (dto: { refreshToken: string }) => Promise<TestAuthResponse>;
+};
+
+type LogoutAuthService = {
+  logout: (user: AuthUser) => Promise<{ message: string }>;
+};
+
+function mockResolvedValue(mock: MockFn, value: unknown): MockFn {
+  return mock.mockResolvedValue(value as never);
+}
+
+function mockResolvedValueOnce(mock: MockFn, value: unknown): MockFn {
+  return mock.mockResolvedValueOnce(value as never);
+}
+
+async function refreshToken(
+  service: RefreshableAuthService,
+): Promise<TestAuthResponse> {
+  return await service.refresh({ refreshToken: "refresh-token" });
+}
+
+async function logout(
+  service: LogoutAuthService,
+  authUser = user,
+): Promise<{ message: string }> {
+  return await service.logout({
+    sub: authUser.id,
+    email: authUser.email,
+    role: authUser.role,
+  });
+}
+
 describe("AuthService", () => {
-  const makeService = () => {
+  const makeService = (): TestDependencies => {
     const users = {
-      create: jest.fn().mockResolvedValue(user),
+      create: mockResolvedValue(jest.fn(), user),
       findByEmail: jest.fn(),
-      findById: jest.fn().mockResolvedValue(user),
-      updateRefreshTokenHash: jest.fn().mockResolvedValue(user),
+      findById: mockResolvedValue(jest.fn(), user),
+      updateRefreshTokenHash: mockResolvedValue(jest.fn(), user),
       toPublicUser: jest.fn().mockReturnValue({
         id: user.id,
         email: user.email,
@@ -53,11 +102,11 @@ describe("AuthService", () => {
       }),
     } satisfies MockUsersService;
     const jwt = {
-      signAsync: jest
-        .fn()
-        .mockResolvedValueOnce("signed.access.token")
-        .mockResolvedValueOnce("signed.refresh.token"),
-      verifyAsync: jest.fn().mockResolvedValue({
+      signAsync: mockResolvedValueOnce(
+        mockResolvedValueOnce(jest.fn(), "signed.access.token"),
+        "signed.refresh.token",
+      ),
+      verifyAsync: mockResolvedValue(jest.fn(), {
         sub: user.id,
         email: user.email,
         role: user.role,
@@ -154,16 +203,16 @@ describe("AuthService", () => {
 
   it("rotates refresh tokens", async () => {
     const { service, users, jwt } = makeService();
-    users.findById.mockResolvedValue({
+    mockResolvedValue(users.findById, {
       ...user,
       refreshTokenHash: createHash("sha256")
         .update("refresh-token")
         .digest("hex"),
     });
 
-    await expect(
-      service.refresh({ refreshToken: "refresh-token" }),
-    ).resolves.toMatchObject({
+    const response = await refreshToken(service);
+
+    expect(response).toMatchObject({
       accessToken: "signed.access.token",
       refreshToken: "signed.refresh.token",
     });
@@ -180,13 +229,9 @@ describe("AuthService", () => {
   it("clears refresh tokens on logout", async () => {
     const { service, users } = makeService();
 
-    await expect(
-      service.logout({
-        sub: user.id,
-        email: user.email,
-        role: user.role,
-      }),
-    ).resolves.toEqual({ message: "Logged out" });
+    const response = await logout(service);
+
+    expect(response).toEqual({ message: "Logged out" });
 
     expect(users.updateRefreshTokenHash).toHaveBeenCalledWith(user.id, null);
   });

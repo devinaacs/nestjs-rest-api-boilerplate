@@ -1,4 +1,11 @@
-import { Body, Controller, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
@@ -27,18 +34,21 @@ export class AuthController {
   }
 
   @Post("login")
+  @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: "User authenticated" })
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
   }
 
   @Post("refresh")
+  @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: "Access and refresh tokens rotated" })
   refresh(@Body() dto: RefreshTokenDto) {
     return this.auth.refresh(dto);
   }
 
   @Post("logout")
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOkResponse({ description: "Refresh token invalidated" })

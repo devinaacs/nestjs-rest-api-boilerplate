@@ -1,8 +1,10 @@
 import "dotenv/config";
 
-import { PrismaClient, Role } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { z } from "zod";
+
+import { Role } from "../src/common/constants/roles";
 
 const seedSchema = z.object({
   SEED_ADMIN_EMAIL: z.string().email().default("admin@example.com"),

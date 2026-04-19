@@ -7,11 +7,11 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { User } from "@prisma/client";
 import { compare, hash } from "bcryptjs";
 
 import { AuthUser, PublicUser } from "@/common/types/auth-user";
 import { Env } from "@/config/env.validation";
+import { UserRecord } from "@/users/types/user-record";
 import { UsersService } from "@/users/users.service";
 
 import { LoginDto } from "./dto/login.dto";
@@ -92,7 +92,7 @@ export class AuthService {
     return { message: "Logged out" };
   }
 
-  private async createAuthResponse(user: User): Promise<AuthResponse> {
+  private async createAuthResponse(user: UserRecord): Promise<AuthResponse> {
     const payload: AuthUser = {
       sub: user.id,
       email: user.email,

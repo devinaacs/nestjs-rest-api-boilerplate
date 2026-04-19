@@ -1,4 +1,4 @@
-import { Role } from "@prisma/client";
+import { Role } from "@/common/constants/roles";
 
 export type AuthUser = {
   sub: string;

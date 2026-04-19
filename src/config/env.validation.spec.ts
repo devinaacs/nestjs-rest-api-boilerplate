@@ -1,3 +1,5 @@
+import { describe, expect, it } from "@jest/globals";
+
 import { validateEnv } from "./env.validation";
 
 describe("validateEnv", () => {
