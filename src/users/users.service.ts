@@ -24,11 +24,28 @@ export class UsersService {
     });
   }
 
+  async findAll(): Promise<User[]> {
+    return this.prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async updateRefreshTokenHash(
+    id: string,
+    refreshTokenHash: string | null,
+  ): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: { refreshTokenHash },
+    });
+  }
+
   toPublicUser(user: User): PublicUser {
     return {
       id: user.id,
       email: user.email,
       name: user.name,
+      role: user.role,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

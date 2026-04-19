@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
 
 import { AuthModule } from "@/auth/auth.module";
@@ -14,6 +16,15 @@ import { UsersModule } from "@/users/users.module";
       isGlobal: true,
       cache: true,
       validate: validateEnv,
+    }),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) => [
+        {
+          ttl: config.get("THROTTLE_TTL", { infer: true }),
+          limit: config.get("THROTTLE_LIMIT", { infer: true }),
+        },
+      ],
     }),
     LoggerModule.forRootAsync({
       inject: [ConfigService],
@@ -41,6 +52,12 @@ import { UsersModule } from "@/users/users.module";
     HealthModule,
     UsersModule,
     AuthModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

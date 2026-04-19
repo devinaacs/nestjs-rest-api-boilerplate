@@ -1,8 +1,18 @@
-import { Body, Controller, Post } from "@nestjs/common";
-import { ApiCreatedResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { Body, Controller, Post, UseGuards } from "@nestjs/common";
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from "@nestjs/swagger";
+
+import { CurrentUser } from "@/common/decorators/current-user.decorator";
+import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
+import { AuthUser } from "@/common/types/auth-user";
 
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
+import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
 
 @ApiTags("auth")
@@ -20,5 +30,19 @@ export class AuthController {
   @ApiOkResponse({ description: "User authenticated" })
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
+  }
+
+  @Post("refresh")
+  @ApiOkResponse({ description: "Access and refresh tokens rotated" })
+  refresh(@Body() dto: RefreshTokenDto) {
+    return this.auth.refresh(dto);
+  }
+
+  @Post("logout")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOkResponse({ description: "Refresh token invalidated" })
+  logout(@CurrentUser() user: AuthUser) {
+    return this.auth.logout(user);
   }
 }
